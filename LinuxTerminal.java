@@ -44,8 +44,8 @@ class Parser {
 }
 
 public class LinuxTerminal {
-    
     private static String currentDir = System.getProperty("user.dir");
+    private static String previousDir = currentDir;
     Parser parser;
 
     public LinuxTerminal() {
@@ -76,7 +76,7 @@ public class LinuxTerminal {
 
                 terminal.processCommand(commandLine);
             } catch (IOException e) {
-                e.printStackTrace(System.err);
+                e.printStackTrace();
                 break;
             }
         }
@@ -105,19 +105,44 @@ public class LinuxTerminal {
         String[] args = argsString.isEmpty() ? new String[0] : argsString.split("\\s+");
 
         switch (command.toLowerCase()) {
-            case "pwd" -> System.out.println(pwd());
-            case "cd" -> cd(args);
-            case "ls" -> ls(args);
-            case "mkdir" -> mkdir(args);
-            case "rmdir" -> rmdir(args);
-            case "touch" -> touch(args);
-            case "cp" -> cp(args);
-            case "rm" -> rm(args);
-            case "cat" -> cat(args);
-            case "wc" -> wc(args);
-            case "zip" -> zip(args);
-            case "unzip" -> unzip(args);
-            default -> System.out.println("Command not found: " + command);
+            case "pwd":
+                System.out.println(pwd());
+                break;
+            case "cd":
+                cd(args);
+                break;
+            case "ls":
+                ls(args);
+                break;
+            case "mkdir":
+                mkdir(args);
+                break;
+            case "rmdir":
+                rmdir(args);
+                break;
+            case "touch":
+                touch(args);
+                break;
+            case "cp":
+                cp(args);
+                break;
+            case "rm":
+                rm(args);
+                break;
+            case "cat":
+                cat(args);
+                break;
+            case "wc":
+                wc(args);
+                break;
+            case "zip":
+                zip(args);
+                break;
+            case "unzip":
+                unzip(args);
+                break;
+            default:
+                System.out.println("Command not found: " + command);
         }
     }
 
@@ -277,7 +302,7 @@ public class LinuxTerminal {
                 wordCount += line.trim().isEmpty() ? 0 : line.trim().split("\\s+").length;
             }
 
-            System.out.printf("%d %d %d %s%n", lineCount, wordCount, charCount, fileName);
+            System.out.printf("%8d %8d %8d %s%n", lineCount, wordCount, charCount, fileName);
         } catch (IOException e) {
             System.out.println("wc: " + fileName + ": " + e.getMessage());
         }
@@ -451,6 +476,7 @@ public class LinuxTerminal {
 
     public void cd(String[] args) {
         if (args.length == 0) {
+            previousDir = currentDir;
             currentDir = System.getProperty("user.home");
             return;
         }
@@ -459,6 +485,7 @@ public class LinuxTerminal {
         if ("..".equals(path)) {
             File parent = new File(currentDir).getParentFile();
             if (parent != null) {
+                previousDir = currentDir;
                 currentDir = parent.getAbsolutePath();
             }
             return;
@@ -474,6 +501,7 @@ public class LinuxTerminal {
         }
 
         if (newDir.exists() && newDir.isDirectory()) {
+            previousDir = currentDir;
             try {
                 currentDir = newDir.getCanonicalPath();
             } catch (IOException e) {
@@ -590,63 +618,76 @@ public class LinuxTerminal {
             return;
         }
 
-        switch (args.length) {
-            case 1 -> {
-                // Print content of one file
-                String fileName = args[0];
-                Path path = resolvePath(fileName);
-                if (!Files.exists(path)) {
-                    System.out.println("cat: " + fileName + ": No such file or directory");
-                    return;
-                }   if (Files.isDirectory(path)) {
-                    System.out.println("cat: " + fileName + ": Is a directory");
-                    return;
-                }   try {
-                    List<String> lines = Files.readAllLines(path);
-                    for (String line : lines) {
-                        System.out.println(line);
-                    }
-                } catch (IOException e) {
-                    System.out.println("cat: " + fileName + ": " + e.getMessage());
-                }
+        if (args.length == 1) {
+            // Print content of one file
+            String fileName = args[0];
+            Path path = resolvePath(fileName);
+            
+            if (!Files.exists(path)) {
+                System.out.println("cat: " + fileName + ": No such file or directory");
+                return;
             }
-            case 2 -> {
-                // Concatenate and print content of two files
-                String fileName1 = args[0];
-                String fileName2 = args[1];
-                Path path1 = resolvePath(fileName1);
-                Path path2 = resolvePath(fileName2);
-                // Check first file
-                if (!Files.exists(path1)) {
-                    System.out.println("cat: " + fileName1 + ": No such file or directory");
-                    return;
-                }   if (Files.isDirectory(path1)) {
-                    System.out.println("cat: " + fileName1 + ": Is a directory");
-                    return;
-                }   // Check second file
-                if (!Files.exists(path2)) {
-                    System.out.println("cat: " + fileName2 + ": No such file or directory");
-                    return;
-                }   if (Files.isDirectory(path2)) {
-                    System.out.println("cat: " + fileName2 + ": Is a directory");
-                    return;
-                }   try {
-                    // Print first file
-                    List<String> lines1 = Files.readAllLines(path1);
-                    for (String line : lines1) {
-                        System.out.println(line);
-                    }
-                    
-                    // Print second file
-                    List<String> lines2 = Files.readAllLines(path2);
-                    for (String line : lines2) {
-                        System.out.println(line);
-                    }
-                } catch (IOException e) {
-                    System.out.println("cat: " + e.getMessage());
-                }
+
+            if (Files.isDirectory(path)) {
+                System.out.println("cat: " + fileName + ": Is a directory");
+                return;
             }
-            default -> System.out.println("cat: too many arguments");
+
+            try {
+                List<String> lines = Files.readAllLines(path);
+                for (String line : lines) {
+                    System.out.println(line);
+                }
+            } catch (IOException e) {
+                System.out.println("cat: " + fileName + ": " + e.getMessage());
+            }
+        } else if (args.length == 2) {
+            // Concatenate and print content of two files
+            String fileName1 = args[0];
+            String fileName2 = args[1];
+            Path path1 = resolvePath(fileName1);
+            Path path2 = resolvePath(fileName2);
+            
+            // Check first file
+            if (!Files.exists(path1)) {
+                System.out.println("cat: " + fileName1 + ": No such file or directory");
+                return;
+            }
+            if (Files.isDirectory(path1)) {
+                System.out.println("cat: " + fileName1 + ": Is a directory");
+                return;
+            }
+
+            // Check second file
+            if (!Files.exists(path2)) {
+                System.out.println("cat: " + fileName2 + ": No such file or directory");
+                return;
+            }
+            if (Files.isDirectory(path2)) {
+                System.out.println("cat: " + fileName2 + ": Is a directory");
+                return;
+            }
+
+            try {
+                // Print first file
+                List<String> lines1 = Files.readAllLines(path1);
+                for (String line : lines1) {
+                    System.out.println(line);
+                }
+                
+                // Print second file
+                List<String> lines2 = Files.readAllLines(path2);
+                for (String line : lines2) {
+                    System.out.println(line);
+                }
+            } catch (IOException e) {
+                System.out.println("cat: " + e.getMessage());
+            }
+        } else {
+            System.out.println("cat: too many arguments");
         }
     }
+
+
+
 }
